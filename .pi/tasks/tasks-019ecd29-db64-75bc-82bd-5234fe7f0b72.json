@@ -1,0 +1,76 @@
+{
+  "nextId": 7,
+  "tasks": [
+    {
+      "id": "1",
+      "subject": "Scan current plugin architecture and notification flow",
+      "description": "Inspect /Users/quinlanjager/pi-notify repo: identify current plugin entrypoints, APIs, transport, and agent-end notification assumptions. Summarize current behavior and files to change.",
+      "status": "completed",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1781558632920,
+      "updatedAt": 1781558681938,
+      "activeForm": "Scanning repo and current plugin assumptions"
+    },
+    {
+      "id": "2",
+      "subject": "Design ZeroMQ-backed notification bus API",
+      "description": "Define package goal: generic cross-process notification bus. Choose ZeroMQ socket patterns (PUB/SUB, PUSH/PULL, ROUTER/DEALER), address discovery, topic schema, message format, reliability semantics. Produce proposed TypeScript API and config options.",
+      "status": "completed",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1781558635186,
+      "updatedAt": 1781559124934,
+      "activeForm": "Designing ZeroMQ notification bus API + Pi wrapper"
+    },
+    {
+      "id": "3",
+      "subject": "Refactor codebase to implement ZeroMQ notification bus",
+      "description": "Replace current transport with zeromq npm library. Implement bus server (forwarder) and client (publisher/subscriber). Remove agent-end-specific bits. Update exports, docs, examples, and tests.",
+      "status": "completed",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1781558637373,
+      "updatedAt": 1781559731001,
+      "activeForm": "Refactoring to ZeroMQ notification bus + Pi wrapper"
+    },
+    {
+      "id": "4",
+      "subject": "Add minimal examples and verification scripts",
+      "description": "Add runnable examples: start-bus, publisher, subscriber; plus quick smoke test script. Add npm scripts and CI-friendly test (vitest or node assert) to validate message delivery.",
+      "status": "pending",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1781558639278,
+      "updatedAt": 1781558639278
+    },
+    {
+      "id": "5",
+      "subject": "Stub out public API and split domain vs process integration",
+      "description": "Implement initial public API surface (publish/subscribe/health/register) with domain types + domain helpers separated from process-level ZeroMQ integration. Stubs should compile and return NOT_IMPLEMENTED for process actions.",
+      "status": "completed",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1781559977970,
+      "updatedAt": 1781560024714,
+      "activeForm": "Stubbing public API modules and ensuring TypeScript compiles"
+    },
+    {
+      "id": "6",
+      "subject": "Remove legacy agent-end notify files from repo",
+      "description": "Delete old agent-end-notify HTTP/SSE integration, domain types/format, and tests. Keep new bus domain/process/api/pi modules. Optionally remove .pi task artifact dir if user wants.",
+      "status": "completed",
+      "metadata": {},
+      "blocks": [],
+      "blockedBy": [],
+      "createdAt": 1781560764576,
+      "updatedAt": 1781560914523,
+      "activeForm": "Deleting legacy agent-end notify files and cleaning directories"
+    }
+  ]
+}
