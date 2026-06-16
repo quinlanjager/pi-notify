@@ -1,6 +1,6 @@
 {
 	"name": "@pi-synapse/cli",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "CLI client for pi-synapse",
 	"type": "module",
 	"publishConfig": {
