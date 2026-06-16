@@ -5,7 +5,7 @@ import type {
 import { expect, test } from "vitest";
 
 import { register } from "@/src/pi/register.ts";
-import type { PublishResult } from "@/src/socket.ts";
+import type { PublishResult } from "@/src/client.ts";
 
 type SessionHandler = (
 	event: unknown,

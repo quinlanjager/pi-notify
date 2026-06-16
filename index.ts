@@ -3,7 +3,7 @@ export type {
 	BusEndpoints,
 	PublishResult,
 	SubscribeHandler,
-} from "@/src/socket.ts";
-export { publish, subscribe, health } from "@/src/socket.ts";
+} from "@/src/client.ts";
+export { publish, subscribe, health } from "@/src/client.ts";
 export type { RegisterOptions, PiNotify } from "@/src/pi/register.ts";
 export { register } from "@/src/pi/register.ts";

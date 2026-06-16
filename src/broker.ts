@@ -1,13 +1,13 @@
 import { XPublisher, XSubscriber, Reply } from "zeromq";
 
-import type { BusEndpoints } from "@/src/socket.ts";
-import { DEFAULT_ENDPOINTS } from "@/src/socket.ts";
+import type { BusEndpoints } from "@/src/client.ts";
+import { DEFAULT_ENDPOINTS } from "@/src/client.ts";
 
 export type BrokerOptions = {
 	endpoints?: Partial<BusEndpoints>;
 };
 
-export async function runBroker(opts: BrokerOptions = {}): Promise<void> {
+export async function runBroker(opts: BrokerOptions = {}): Promise<() => void> {
 	const endpoints: BusEndpoints = { ...DEFAULT_ENDPOINTS, ...opts.endpoints };
 
 	const xsub = new XSubscriber();
@@ -27,16 +27,6 @@ export async function runBroker(opts: BrokerOptions = {}): Promise<void> {
 		}
 		throw err;
 	}
-
-	function cleanup() {
-		xsub.close();
-		xpub.close();
-		control.close();
-		process.exit(0);
-	}
-
-	process.once("SIGINT", cleanup);
-	process.once("SIGTERM", cleanup);
 
 	// Publisher messages: XSUB → XPUB
 	async function forwardToXpub() {
@@ -61,5 +51,20 @@ export async function runBroker(opts: BrokerOptions = {}): Promise<void> {
 		}
 	}
 
-	await Promise.all([forwardToXpub(), forwardToXsub(), serveControl()]);
+	forwardToXpub().catch(() => {});
+	forwardToXsub().catch(() => {});
+	serveControl().catch(() => {});
+
+	function teardown() {
+		process.off("SIGINT", teardown);
+		process.off("SIGTERM", teardown);
+		xsub.close();
+		xpub.close();
+		control.close();
+	}
+
+	process.once("SIGINT", teardown);
+	process.once("SIGTERM", teardown);
+
+	return teardown;
 }
