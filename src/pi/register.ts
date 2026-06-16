@@ -2,7 +2,7 @@ import type {
 	BusEndpoints,
 	PublishResult,
 	SubscribeHandler,
-} from "@/src/notify.ts";
+} from "@/src/socket.ts";
 import type {
 	ExtensionAPI,
 	ExtensionContext,

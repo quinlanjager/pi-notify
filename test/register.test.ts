@@ -5,7 +5,7 @@ import type {
 import { expect, test } from "bun:test";
 
 import { register } from "@/src/pi/register.ts";
-import type { PublishResult } from "@/src/notify.ts";
+import type { PublishResult } from "@/src/socket.ts";
 
 type SessionHandler = (
 	event: unknown,

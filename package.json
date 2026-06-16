@@ -42,6 +42,8 @@
 	},
 	"packageManager": "bun@^1.1.0",
 	"dependencies": {
-		"@earendil-works/pi-coding-agent": "^0.79.4"
+		"@earendil-works/pi-coding-agent": "^0.79.4",
+		"@nats-io/transport-node": "^3.4.0",
+		"typia": "^12.1.1"
 	}
 }

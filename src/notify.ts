@@ -1,14 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-export type BusEndpoints = {
-	/** Publishers connect here (broker binds XSUB). */
-	xsub: string;
-	/** Subscribers connect here (broker binds XPUB). */
-	xpub: string;
-	/** Control plane health checks (broker binds REP). */
-	control: string;
-};
-
 export type NotifyEnvelope<T = unknown> = {
 	v: 1;
 	id: string;
@@ -27,23 +18,7 @@ export type NotifyEnvelope<T = unknown> = {
 	meta?: Record<string, unknown>;
 };
 
-export type PublishResult =
-	| { ok: true }
-	| {
-			ok: false;
-			code: "BROKER_UNAVAILABLE" | "INVALID_TOPIC" | "NOT_IMPLEMENTED";
-			error: string;
-	  };
-
-export type SubscribeHandler = (msg: NotifyEnvelope) => void | Promise<void>;
-
-export const DEFAULT_ENDPOINTS: BusEndpoints = {
-	xsub: "tcp://127.0.0.1:47836",
-	xpub: "tcp://127.0.0.1:47837",
-	control: "tcp://127.0.0.1:47838",
-};
-
-export type EnvelopeProvenance = {
+export type EnvelopeSource = {
 	pid: number;
 	hostname?: string;
 };
@@ -57,7 +32,7 @@ export function normalizeTopic(input: string): string | undefined {
 export function makeEnvelope<T>(
 	topic: string,
 	payload: T,
-	provenance: EnvelopeProvenance,
+	source: EnvelopeSource,
 	meta?: Record<string, unknown>,
 ): NotifyEnvelope<T> {
 	return {
@@ -65,8 +40,8 @@ export function makeEnvelope<T>(
 		id: randomUUID(),
 		ts: Date.now(),
 		topic,
-		pid: provenance.pid,
-		...(provenance.hostname ? { hostname: provenance.hostname } : {}),
+		pid: source.pid,
+		...(source.hostname ? { hostname: source.hostname } : {}),
 		payload,
 		...(meta ? { meta } : {}),
 	};
