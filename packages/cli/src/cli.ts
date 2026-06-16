@@ -79,10 +79,26 @@ async function cmdSubscribe(prefix: string) {
 	await runIndefinitely(unsub);
 }
 
+function parseMeta(
+	raw: string | string[] | undefined,
+): Record<string, string> | undefined {
+	if (!raw) return undefined;
+	const entries = (Array.isArray(raw) ? raw : [raw]).map((kv) => {
+		const colon = kv.indexOf(":");
+		if (colon === -1) {
+			console.error(`--meta must be key:value, got: ${kv}`);
+			process.exit(1);
+		}
+		return [kv.slice(0, colon), kv.slice(colon + 1)] as const;
+	});
+	return Object.fromEntries(entries);
+}
+
 async function cmdPublish(
 	topic: string,
 	jsonStr: string,
 	timeout: number | undefined,
+	meta: string | string[] | undefined,
 ) {
 	let payload: unknown;
 	try {
@@ -93,9 +109,11 @@ async function cmdPublish(
 	}
 
 	const ep = endpoints();
+	const metaObj = parseMeta(meta);
 	const result = await publish(topic, payload, {
 		endpoints: ep,
 		...timeoutOpt(timeout),
+		...(metaObj ? { meta: metaObj } : {}),
 	});
 
 	if (result.ok) {
@@ -152,8 +170,12 @@ await yargs(hideBin(process.argv))
 				.option("timeout", {
 					type: "number",
 					describe: "timeout in ms (default 750)",
+				})
+				.option("meta", {
+					type: "string",
+					describe: "metadata as key:value (repeatable)",
 				}),
-		(argv) => cmdPublish(argv.topic, argv.json, argv.timeout),
+		(argv) => cmdPublish(argv.topic, argv.json, argv.timeout, argv.meta),
 	)
 	.demandCommand(1, "specify a command")
 	.strict()
