@@ -16,34 +16,32 @@
 		"README.md"
 	],
 	"scripts": {
-		"build": "bun build index.ts --outdir dist --target node --format esm",
-		"build:types": "bunx tsc -p tsconfig.build.json",
-		"prepublishOnly": "bun run build && bun run build:types",
-		"test": "bun test",
-		"test:watch": "bun test --watch",
-		"format": "bunx biome format --write .",
-		"lint": "bunx biome lint .",
-		"typecheck": "bunx tsc --noEmit",
-		"check": "bun run format && bun run lint && bun run typecheck",
-		"hooks:install": "bunx lefthook install",
-		"hooks:run": "bunx lefthook run pre-commit"
+		"build": "node build.mjs",
+		"build:types": "tsc -p tsconfig.build.json",
+		"prepublishOnly": "npm run build && npm run build:types",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"format": "biome format --write .",
+		"lint": "biome lint .",
+		"typecheck": "tsc --noEmit",
+		"check": "npm run format && npm run lint && npm run typecheck"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "latest",
 		"@types/node": "^24.0.0",
-		"bun-types": "latest",
-		"lefthook": "^1.7.17",
-		"typescript": "^5.9.3"
+		"@typia/unplugin": "^12.1.1",
+		"esbuild": "^0.25.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.0.0"
 	},
 	"pi": {
 		"extensions": [
 			"./index.ts"
 		]
 	},
-	"packageManager": "bun@^1.1.0",
 	"dependencies": {
 		"@earendil-works/pi-coding-agent": "^0.79.4",
-		"@nats-io/transport-node": "^3.4.0",
+		"zeromq": "^6.0.0-beta.17",
 		"typia": "^12.1.1"
 	}
 }

@@ -1,24 +1,31 @@
-import { connect } from "@nats-io/transport-node";
+import { Publisher, Subscriber, Request as ZmqRequest } from "zeromq";
 import typia from "typia";
+import { hostname as osHostname } from "node:os";
 
 import type { NotifyEnvelope } from "@/src/notify.ts";
 import { makeEnvelope, normalizeTopic } from "@/src/notify.ts";
-import { hostname as osHostname } from "node:os";
 
 export type BusEndpoints = {
-	url: string;
+	/** Publishers connect here (broker binds XSUB). */
+	xsub: string;
+	/** Subscribers connect here (broker binds XPUB). */
+	xpub: string;
+	/** Health ping endpoint (broker binds REP). */
+	control: string;
 };
 
 export type PublishResult =
 	| { ok: true }
 	| {
 			ok: false;
-			code: "BROKER_UNAVAILABLE" | "INVALID_TOPIC" | "NOT_IMPLEMENTED";
+			code: "BROKER_UNAVAILABLE" | "INVALID_TOPIC";
 			error: string;
 	  };
 
 export const DEFAULT_ENDPOINTS: BusEndpoints = {
-	url: "nats://127.0.0.1:4222",
+	xsub: "tcp://127.0.0.1:47836",
+	xpub: "tcp://127.0.0.1:47837",
+	control: "tcp://127.0.0.1:47838",
 };
 
 export type SubscribeHandler = (msg: NotifyEnvelope) => void | Promise<void>;
@@ -31,7 +38,6 @@ export type PublishOptions = {
 
 export type SubscribeOptions = {
 	endpoints?: Partial<BusEndpoints>;
-	timeoutMs?: number;
 };
 
 export type HealthOptions = {
@@ -39,11 +45,8 @@ export type HealthOptions = {
 	timeoutMs?: number;
 };
 
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-
-function resolveUrl(partial?: Partial<BusEndpoints>): string {
-	return partial?.url ?? DEFAULT_ENDPOINTS.url;
+function resolveEndpoints(partial?: Partial<BusEndpoints>): BusEndpoints {
+	return { ...DEFAULT_ENDPOINTS, ...partial };
 }
 
 function resolveTimeoutMs(timeoutMs?: number): number {
@@ -54,20 +57,27 @@ function resolveTimeoutMs(timeoutMs?: number): number {
 		: 750;
 }
 
-export async function health(opts: HealthOptions = {}): Promise<boolean> {
-	const url = resolveUrl(opts.endpoints);
-	const timeoutMs = resolveTimeoutMs(opts.timeoutMs);
+async function pingControl(
+	controlUrl: string,
+	timeoutMs: number,
+): Promise<boolean> {
+	const req = new ZmqRequest({ receiveTimeout: timeoutMs });
 	try {
-		const nc = await connect({
-			servers: url,
-			timeout: timeoutMs,
-			reconnect: false,
-		});
-		await nc.drain();
-		return true;
+		req.connect(controlUrl);
+		await req.send("PING");
+		const [res] = await req.receive();
+		req.close();
+		return res?.toString() === "PONG";
 	} catch {
+		req.close();
 		return false;
 	}
+}
+
+export async function health(opts: HealthOptions = {}): Promise<boolean> {
+	const endpoints = resolveEndpoints(opts.endpoints);
+	const timeoutMs = resolveTimeoutMs(opts.timeoutMs);
+	return pingControl(endpoints.control, timeoutMs);
 }
 
 export async function publish<T>(
@@ -80,23 +90,31 @@ export async function publish<T>(
 		return { ok: false, code: "INVALID_TOPIC", error: "Invalid topic" };
 	}
 
-	const url = resolveUrl(opts.endpoints);
+	const endpoints = resolveEndpoints(opts.endpoints);
 	const timeoutMs = resolveTimeoutMs(opts.timeoutMs);
-	const env = makeEnvelope(
-		topic,
-		payload,
-		{ pid: process.pid, hostname: osHostname() },
-		opts.meta,
-	);
 
+	// ZMQ PUB is fire-and-forget — probe control first to detect broker-down
+	const up = await pingControl(endpoints.control, timeoutMs);
+	if (!up) {
+		return {
+			ok: false,
+			code: "BROKER_UNAVAILABLE",
+			error: `Broker not reachable at ${endpoints.control}`,
+		};
+	}
+
+	const sock = new Publisher({ linger: 200 });
 	try {
-		const nc = await connect({
-			servers: url,
-			timeout: timeoutMs,
-			reconnect: false,
-		});
-		nc.publish(topic, enc.encode(JSON.stringify(env)));
-		await nc.drain();
+		sock.connect(endpoints.xsub);
+		const env = makeEnvelope(
+			topic,
+			payload,
+			{ pid: process.pid, hostname: osHostname() },
+			opts.meta,
+		);
+		// Brief pause for TCP handshake before send + close
+		await new Promise<void>((r) => setTimeout(r, 5));
+		await sock.send([topic, JSON.stringify(env)]);
 		return { ok: true };
 	} catch (err) {
 		return {
@@ -104,6 +122,8 @@ export async function publish<T>(
 			code: "BROKER_UNAVAILABLE",
 			error: err instanceof Error ? err.message : String(err),
 		};
+	} finally {
+		sock.close();
 	}
 }
 
@@ -115,13 +135,17 @@ export async function subscribe(
 	const pfx = normalizeTopic(prefix);
 	if (!pfx) throw new Error("Invalid subscription prefix");
 
-	const url = resolveUrl(opts.endpoints);
-	const nc = await connect({ servers: url });
-	const sub = nc.subscribe(pfx);
+	const endpoints = resolveEndpoints(opts.endpoints);
+	const sock = new Subscriber();
+	sock.connect(endpoints.xpub);
+	sock.subscribe(pfx);
 
 	(async () => {
-		for await (const msg of sub) {
-			const parsed = typia.json.isParse<NotifyEnvelope>(dec.decode(msg.data));
+		for await (const [, data] of sock) {
+			if (!data) {
+				continue;
+			}
+			const parsed = typia.json.isParse<NotifyEnvelope>(data.toString());
 			if (parsed) {
 				await handler(parsed);
 			}
@@ -129,7 +153,6 @@ export async function subscribe(
 	})();
 
 	return () => {
-		sub.unsubscribe();
-		nc.drain().catch(() => {});
+		sock.close();
 	};
 }

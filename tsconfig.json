@@ -9,7 +9,7 @@
 		"forceConsistentCasingInFileNames": true,
 		"noUncheckedIndexedAccess": true,
 		"exactOptionalPropertyTypes": true,
-		"types": ["node", "bun-types"],
+		"types": ["node"],
 		"allowImportingTsExtensions": true,
 		"noEmit": true,
 		"baseUrl": ".",

@@ -2,7 +2,7 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 
 import { register } from "@/src/pi/register.ts";
 import type { PublishResult } from "@/src/socket.ts";
