@@ -1,6 +1,6 @@
 {
 	"name": "agent-end-notify",
-	"version": "1.0.0",
+	"version": "0.1.0",
 	"description": "Pi fleet notifications when agents end",
 	"type": "module",
 	"main": "./dist/index.js",
@@ -17,6 +17,7 @@
 	],
 	"scripts": {
 		"build": "node build.mjs",
+		"build:debug": "node build.mjs --debug",
 		"build:types": "tsc -p tsconfig.build.json",
 		"prepublishOnly": "npm run build && npm run build:types",
 		"test": "vitest run",
