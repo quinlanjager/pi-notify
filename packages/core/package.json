@@ -1,5 +1,5 @@
 {
-	"name": "pi-notify",
+	"name": "pi-synapse",
 	"version": "0.1.0",
 	"description": "Event bus designed for Pi agent",
 	"type": "module",

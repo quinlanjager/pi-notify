@@ -27,7 +27,7 @@ export type RegisterOptions = {
 	};
 };
 
-export type PiNotify = {
+export type PiSynapse = {
 	publish<T>(
 		topic: string,
 		payload: T,
@@ -71,7 +71,7 @@ function ctxMeta(
 export async function register(
 	pi: ExtensionAPI,
 	opts: RegisterOptions = {},
-): Promise<PiNotify> {
+): Promise<PiSynapse> {
 	const transportPublish = opts.transport?.publish ?? publish;
 	const transportSubscribe = opts.transport?.subscribe ?? subscribe;
 	const transportHealth = opts.transport?.health ?? health;
@@ -79,7 +79,7 @@ export async function register(
 	const statusKey =
 		typeof opts.statusKey === "string" && opts.statusKey.trim().length > 0
 			? opts.statusKey
-			: "pi-notify";
+			: "pi-synapse";
 
 	const baseMetaRaw: Record<string, unknown> = {};
 	if (opts.meta) Object.assign(baseMetaRaw, opts.meta);
@@ -109,23 +109,61 @@ export async function register(
 		ctx.ui.setStatus(statusKey, undefined);
 	});
 
-	return {
-		async publish(topic, payload, callOpts = {}) {
-			const metaRaw: Record<string, unknown> = {};
+	const publishImpl: PiSynapse["publish"] = async (
+		topic,
+		payload,
+		callOpts = {},
+	) => {
+		const metaRaw: Record<string, unknown> = {};
 
-			if (baseMeta) Object.assign(metaRaw, baseMeta);
+		if (baseMeta) Object.assign(metaRaw, baseMeta);
 
-			const fromCtx = ctxMeta(callOpts.ctx);
-			if (fromCtx) Object.assign(metaRaw, fromCtx);
+		const fromCtx = ctxMeta(callOpts.ctx);
+		if (fromCtx) Object.assign(metaRaw, fromCtx);
 
-			if (callOpts.meta) Object.assign(metaRaw, callOpts.meta);
+		if (callOpts.meta) Object.assign(metaRaw, callOpts.meta);
 
-			const meta = normalizeMeta(metaRaw);
-			return transportPublish(topic, payload, {
-				...(opts.bus ?? {}),
-				...(meta !== undefined ? { meta } : {}),
-			});
+		const meta = normalizeMeta(metaRaw);
+		return transportPublish(topic, payload, {
+			...(opts.bus ?? {}),
+			...(meta !== undefined ? { meta } : {}),
+		});
+	};
+
+	pi.registerCommand("synapse:publish", {
+		description: "Send a notification to the synapse bus (topic + payload).",
+		handler: async (args, ctx) => {
+			const trimmed = args.trim();
+			const sp = trimmed.indexOf(" ");
+			let topic = sp === -1 ? trimmed : trimmed.slice(0, sp);
+			let payload = sp === -1 ? "" : trimmed.slice(sp + 1).trim();
+
+			if (!topic) {
+				topic =
+					(
+						await ctx.ui.input("Notification topic", "e.g. alerts.deploy")
+					)?.trim() ?? "";
+				if (!topic) {
+					ctx.ui.notify("Publish cancelled: no topic.", "warning");
+					return;
+				}
+			}
+			if (!payload) {
+				payload =
+					(await ctx.ui.input("Payload (text)", "message body"))?.trim() ?? "";
+			}
+
+			const res = await publishImpl(topic, payload, { ctx });
+			if (res.ok) {
+				ctx.ui.notify(`Published to "${topic}".`, "info");
+			} else {
+				ctx.ui.notify(`Publish failed (${res.code}): ${res.error}`, "error");
+			}
 		},
+	});
+
+	return {
+		publish: publishImpl,
 		async subscribe(prefix, handler) {
 			return transportSubscribe(prefix, handler, opts.bus ?? {});
 		},

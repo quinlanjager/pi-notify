@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { runBroker, DEFAULT_ENDPOINTS } from "pi-notify";
-import { health, publish, subscribe } from "pi-notify";
-import type { BusEndpoints } from "pi-notify";
+import { runBroker, DEFAULT_ENDPOINTS } from "pi-synapse";
+import { health, publish, subscribe } from "pi-synapse";
+import type { BusEndpoints } from "pi-synapse";
 
 const HELP = `
-pi-notify CLI client
+pi-synapse CLI client
 
 Commands:
   broker   [--xsub=URL] [--xpub=URL] [--control=URL]

@@ -1,5 +1,5 @@
 {
-	"name": "pi-notify",
+	"name": "pi-synapse",
 	"private": true,
 	"workspaces": [
 		"packages/*"

@@ -1,4 +1,4 @@
-# pi-notify (ZeroMQ notification bus) — Refactor Plan
+# pi-synapse (ZeroMQ notification bus) — Refactor Plan
 
 ## Goal
 Turn this repo into a **standalone npm library** for building **cross-process notification systems** using **ZeroMQ (Node.js)**. Add optional **Pi integration** via `register(pi, ...)`. Remove agent-end-specific behavior.
@@ -116,7 +116,7 @@ pi.on("agent_end", async (event, ctx) => {
 Assumption: meta **immutable** after `register()` unless we later add `setMeta()`.
 
 Optional: on `session_start`, set status:
-- `pi-notify: connected/offline` (if UI available)
+- `pi-synapse: connected/offline` (if UI available)
 
 No default event wiring. Caller wires `pi.on(...)`.
 
@@ -139,9 +139,9 @@ Startup behavior:
 
 ## CLI
 Add npm bin (example name; final depends on package name):
-- `pi-notify-bus start` — run broker
-- `pi-notify-bus health` — ping broker, exit code 0/1
-- `pi-notify-bus endpoints` — print effective endpoints
+- `pi-synapse-bus start` — run broker
+- `pi-synapse-bus health` — ping broker, exit code 0/1
+- `pi-synapse-bus endpoints` — print effective endpoints
 
 CLI uses env overrides.
 

@@ -7,5 +7,5 @@ export type {
 export { publish, subscribe, health, DEFAULT_ENDPOINTS } from "./src/client.ts";
 export type { BrokerOptions } from "./src/broker.ts";
 export { runBroker } from "./src/broker.ts";
-export type { RegisterOptions, PiNotify } from "./src/pi/register.ts";
+export type { RegisterOptions, PiSynapse } from "./src/pi/register.ts";
 export { register } from "./src/pi/register.ts";

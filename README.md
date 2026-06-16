@@ -1,4 +1,4 @@
-# pi-notify (work in progress)
+# pi-synapse (work in progress)
 
 ZeroMQ-backed cross-process notification bus for Node.js.
 

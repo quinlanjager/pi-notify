@@ -16,17 +16,24 @@ type CtxWithStatusCalls = ExtensionContext & {
 	__statusCalls: Array<{ key: string; value: string | undefined }>;
 };
 
+type CommandHandler = (args: string, ctx: ExtensionContext) => Promise<void>;
+
 function makePiHarness(): {
 	pi: ExtensionAPI;
 	handlers: Map<string, SessionHandler>;
+	commands: Map<string, { handler: CommandHandler }>;
 } {
 	const handlers = new Map<string, SessionHandler>();
+	const commands = new Map<string, { handler: CommandHandler }>();
 	const pi = {
-		on(event, handler) {
-			handlers.set(event, handler as SessionHandler);
+		on(event: string, handler: SessionHandler) {
+			handlers.set(event, handler);
 		},
-	} as ExtensionAPI;
-	return { pi, handlers };
+		registerCommand(name: string, options: { handler: CommandHandler }) {
+			commands.set(name, options);
+		},
+	} as unknown as ExtensionAPI;
+	return { pi, handlers, commands };
 }
 
 function makeCtx(
@@ -56,6 +63,44 @@ function makeCtx(
 	return ctx;
 }
 
+type NotifyCall = { message: string; type: string | undefined };
+type CmdCtx = ExtensionContext & {
+	__notifyCalls: NotifyCall[];
+	__inputTitles: string[];
+};
+
+// ctx for command handler tests: records notify() calls and feeds queued
+// input() responses (one per prompt, in order).
+function makeCommandCtx(inputs: Array<string | undefined> = []): CmdCtx {
+	const notifyCalls: NotifyCall[] = [];
+	const inputTitles: string[] = [];
+	const queue = [...inputs];
+
+	const base = {
+		hasUI: true,
+		sessionManager: {
+			getSessionFile() {
+				return "/tmp/session.json";
+			},
+		},
+		ui: {
+			setStatus() {},
+			notify(message: string, type?: string) {
+				notifyCalls.push({ message, type });
+			},
+			async input(title: string) {
+				inputTitles.push(title);
+				return queue.shift();
+			},
+		},
+	};
+
+	const ctx = base as unknown as CmdCtx;
+	ctx.__notifyCalls = notifyCalls;
+	ctx.__inputTitles = inputTitles;
+	return ctx;
+}
+
 test("register: sets status connected/offline on session_start when UI present", async () => {
 	const { pi, handlers } = makePiHarness();
 
@@ -72,7 +117,9 @@ test("register: sets status connected/offline on session_start when UI present",
 
 	await onStart({}, ctx);
 
-	expect(ctx.__statusCalls).toEqual([{ key: "pi-notify", value: "connected" }]);
+	expect(ctx.__statusCalls).toEqual([
+		{ key: "pi-synapse", value: "connected" },
+	]);
 });
 
 test("register: clears status on session_shutdown", async () => {
@@ -91,7 +138,7 @@ test("register: clears status on session_shutdown", async () => {
 
 	await onShutdown({}, ctx);
 
-	expect(ctx.__statusCalls).toEqual([{ key: "pi-notify", value: undefined }]);
+	expect(ctx.__statusCalls).toEqual([{ key: "pi-synapse", value: undefined }]);
 });
 
 test("register: does not touch UI when hasUI is false", async () => {
@@ -197,4 +244,56 @@ test("register: meta omitted when empty", async () => {
 
 	expect(captured.length).toBe(1);
 	expect((captured[0] as { meta?: unknown } | undefined)?.meta).toBeUndefined();
+});
+
+test("register: synapse:publish command parses topic + payload from args", async () => {
+	const { pi, commands } = makePiHarness();
+
+	const captured: Array<{ topic: string; payload: unknown }> = [];
+	await register(pi, {
+		transport: {
+			publish: async (topic, payload) => {
+				captured.push({ topic, payload });
+				return { ok: true };
+			},
+		},
+	});
+
+	const cmd = commands.get("synapse:publish");
+	expect(cmd).toBeTruthy();
+	if (!cmd) throw new Error("missing synapse:publish command");
+
+	const ctx = makeCommandCtx();
+	await cmd.handler("alerts.deploy shipped v2", ctx);
+
+	expect(captured).toEqual([{ topic: "alerts.deploy", payload: "shipped v2" }]);
+	expect(ctx.__notifyCalls).toEqual([
+		{ message: 'Published to "alerts.deploy".', type: "info" },
+	]);
+});
+
+test("register: synapse:publish command prompts when args are empty", async () => {
+	const { pi, commands } = makePiHarness();
+
+	const captured: Array<{ topic: string; payload: unknown }> = [];
+	await register(pi, {
+		transport: {
+			publish: async (topic, payload) => {
+				captured.push({ topic, payload });
+				return { ok: true };
+			},
+		},
+	});
+
+	const cmd = commands.get("synapse:publish");
+	if (!cmd) throw new Error("missing synapse:publish command");
+
+	const ctx = makeCommandCtx(["alerts.test", "hello"]);
+	await cmd.handler("", ctx);
+
+	expect(ctx.__inputTitles).toEqual(["Notification topic", "Payload (text)"]);
+	expect(captured).toEqual([{ topic: "alerts.test", payload: "hello" }]);
+	expect(ctx.__notifyCalls).toEqual([
+		{ message: 'Published to "alerts.test".', type: "info" },
+	]);
 });
