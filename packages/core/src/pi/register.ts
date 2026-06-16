@@ -10,15 +10,9 @@ import type {
 import { health, publish, subscribe } from "@/src/client.ts";
 import { runBroker } from "@/src/broker.ts";
 import { Type } from "typebox";
-import {
-	ctxMeta,
-	synapsePublishExecute,
-	normalizeMeta,
-} from "@/src/pi/tools.ts";
+import { synapsePublishExecute, normalizeMeta } from "@/src/pi/tools.ts";
 
 export type RegisterOptions = {
-	agent?: { name?: string; role?: string; tags?: string[] };
-	meta?: Record<string, unknown>;
 	bus?: { endpoints?: Partial<BusEndpoints>; timeoutMs?: number };
 	statusKey?: string;
 
@@ -40,7 +34,7 @@ export type PiSynapse = {
 	publish<T>(
 		topic: string,
 		payload: T,
-		opts?: { ctx?: ExtensionContext; meta?: Record<string, unknown> },
+		opts?: { meta?: Record<string, unknown> },
 	): Promise<PublishResult>;
 	subscribe(prefix: string, handler: SubscribeHandler): Promise<() => void>;
 	health(): Promise<boolean>;
@@ -58,18 +52,6 @@ export async function register(
 		typeof opts.statusKey === "string" && opts.statusKey.trim().length > 0
 			? opts.statusKey
 			: "pi-synapse";
-
-	const baseMetaRaw: Record<string, unknown> = {};
-	if (opts.meta) Object.assign(baseMetaRaw, opts.meta);
-
-	const agent = opts.agent;
-	if (agent) {
-		if (agent.name) baseMetaRaw.agentName = agent.name;
-		if (agent.role) baseMetaRaw.agentRole = agent.role;
-		if (agent.tags) baseMetaRaw.agentTags = agent.tags;
-	}
-
-	const baseMeta = normalizeMeta(baseMetaRaw);
 
 	pi.on("session_start", async (_event, ctx) => {
 		if (!ctx.hasUI) return;
@@ -92,17 +74,7 @@ export async function register(
 		message,
 		callOpts = {},
 	) => {
-		const metaRaw: Record<string, unknown> = {};
-
-		if (baseMeta) Object.assign(metaRaw, baseMeta);
-
-		const fromCtx = ctxMeta(callOpts.ctx);
-		if (fromCtx) Object.assign(metaRaw, fromCtx);
-
-		if (callOpts.meta) Object.assign(metaRaw, callOpts.meta);
-
-		const meta = normalizeMeta(metaRaw);
-
+		const meta = normalizeMeta(callOpts.meta);
 		return transportPublish(topic, message, {
 			...(opts.bus ?? {}),
 			...(meta !== undefined ? { meta } : {}),
@@ -132,7 +104,7 @@ export async function register(
 					(await ctx.ui.input("Payload (text)", "message body"))?.trim() ?? "";
 			}
 
-			const res = await publishImpl(topic, payload, { ctx });
+			const res = await publishImpl(topic, payload);
 			if (res.ok) {
 				ctx.ui.notify(`Published to "${topic}".`, "info");
 			} else {
@@ -159,7 +131,6 @@ export async function register(
 			parameters: PublishParams,
 			execute: synapsePublishExecute({
 				transportPublish,
-				...(baseMeta !== undefined ? { baseMeta } : {}),
 				...(opts.bus !== undefined ? { busOpts: opts.bus } : {}),
 			}),
 		});

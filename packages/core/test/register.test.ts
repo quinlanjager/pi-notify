@@ -5,7 +5,6 @@ import type {
 import { expect, test } from "vitest";
 
 import { register } from "@/src/pi/register.ts";
-import type { PublishResult } from "@/src/client.ts";
 
 type SessionHandler = (
 	event: unknown,
@@ -179,70 +178,34 @@ test("register: does not touch UI when hasUI is false", async () => {
 	expect(ctx.__statusCalls).toEqual([]);
 });
 
-test("register: merges register meta + ctx meta + per-call meta; per-call wins", async () => {
+test("register: per-call meta is passed through to transport", async () => {
 	const { pi } = makePiHarness();
 
 	const captured: Array<{
 		topic: string;
 		meta: Record<string, unknown> | undefined;
 	}> = [];
-	const ok: PublishResult = { ok: true };
 
-	const prevEnv = {
-		PI_AGENT_RUN_ID: process.env.PI_AGENT_RUN_ID,
-		PI_AGENT_GROUP_ID: process.env.PI_AGENT_GROUP_ID,
-		PI_AGENT_PARENT_RUN_ID: process.env.PI_AGENT_PARENT_RUN_ID,
-	};
-	process.env.PI_AGENT_RUN_ID = "run-1";
-	process.env.PI_AGENT_GROUP_ID = "group-1";
-	process.env.PI_AGENT_PARENT_RUN_ID = "parent-1";
-
-	try {
-		const notify = await register(pi, {
-			meta: { team: "infra" },
-			agent: { name: "builder", role: "ci", tags: ["a"] },
-			transport: {
-				publish: async (topic, _payload, opts) => {
-					captured.push({ topic, meta: opts?.meta });
-					return ok;
-				},
+	const notify = await register(pi, {
+		transport: {
+			publish: async (topic, _payload, opts) => {
+				captured.push({ topic, meta: opts?.meta });
+				return { ok: true };
 			},
-		});
+		},
+	});
 
-		const ctx = makeCtx({ cwd: "/repo" });
+	await notify.publish(
+		"pi.agent_end",
+		{ x: 1 },
+		{
+			meta: { team: "infra", extra: 123 },
+		},
+	);
 
-		await notify.publish(
-			"pi.agent_end",
-			{ x: 1 },
-			{
-				ctx,
-				meta: {
-					team: "override",
-					extra: 123,
-				},
-			},
-		);
-
-		expect(captured.length).toBe(1);
-		expect(captured[0]?.topic).toBe("pi.agent_end");
-
-		expect(captured[0]?.meta).toEqual({
-			team: "override",
-			agentName: "builder",
-			agentRole: "ci",
-			agentTags: ["a"],
-			cwd: "/repo",
-			sessionFile: "/tmp/session.json",
-			piRunId: "run-1",
-			piGroupId: "group-1",
-			piParentRunId: "parent-1",
-			extra: 123,
-		});
-	} finally {
-		process.env.PI_AGENT_RUN_ID = prevEnv.PI_AGENT_RUN_ID;
-		process.env.PI_AGENT_GROUP_ID = prevEnv.PI_AGENT_GROUP_ID;
-		process.env.PI_AGENT_PARENT_RUN_ID = prevEnv.PI_AGENT_PARENT_RUN_ID;
-	}
+	expect(captured.length).toBe(1);
+	expect(captured[0]?.topic).toBe("pi.agent_end");
+	expect(captured[0]?.meta).toEqual({ team: "infra", extra: 123 });
 });
 
 test("register: meta omitted when empty", async () => {
