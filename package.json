@@ -1,48 +1,18 @@
 {
-	"name": "agent-end-notify",
-	"version": "0.1.0",
-	"description": "Pi fleet notifications when agents end",
-	"type": "module",
-	"main": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"exports": {
-		".": {
-			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js"
-		}
-	},
-	"files": [
-		"dist",
-		"README.md"
+	"name": "pi-notify",
+	"private": true,
+	"workspaces": [
+		"packages/*"
 	],
 	"scripts": {
-		"build": "node build.mjs",
-		"build:debug": "node build.mjs --debug",
-		"build:types": "tsc -p tsconfig.build.json",
-		"prepublishOnly": "npm run build && npm run build:types",
-		"test": "vitest run",
-		"test:watch": "vitest",
+		"build": "npm run build --workspaces --if-present",
+		"test": "npm run test --workspaces --if-present",
+		"typecheck": "npm run typecheck --workspaces --if-present",
 		"format": "biome format --write .",
 		"lint": "biome lint .",
-		"typecheck": "tsc --noEmit",
 		"check": "npm run format && npm run lint && npm run typecheck"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "latest",
-		"@types/node": "^24.0.0",
-		"@typia/unplugin": "^12.1.1",
-		"esbuild": "^0.25.0",
-		"typescript": "^5.9.3",
-		"vitest": "^3.0.0"
-	},
-	"pi": {
-		"extensions": [
-			"./index.ts"
-		]
-	},
-	"dependencies": {
-		"@earendil-works/pi-coding-agent": "^0.79.4",
-		"zeromq": "^6.0.0-beta.17",
-		"typia": "^12.1.1"
+		"@biomejs/biome": "latest"
 	}
 }

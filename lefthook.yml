@@ -9,6 +9,6 @@ pre-commit:
       glob: "**/*.{ts,tsx,js,jsx}"
       run: npx biome lint {staged_files}
     tsc:
-      run: npx tsc --noEmit
+      run: npm run typecheck --workspaces --if-present
     test:
-      run: npm test
+      run: npm test --workspaces --if-present

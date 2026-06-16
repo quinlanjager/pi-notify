@@ -1,0 +1,44 @@
+{
+	"name": "pi-notify",
+	"version": "0.1.0",
+	"description": "Event bus designed for Pi agent",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js"
+		}
+	},
+	"files": [
+		"dist",
+		"README.md"
+	],
+	"scripts": {
+		"build": "node build.mjs",
+		"build:types": "tsc -p tsconfig.build.json",
+		"prepublishOnly": "npm run build && npm run build:types",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"typecheck": "tsc --noEmit"
+	},
+	"pi": {
+		"extensions": [
+			"./index.ts"
+		]
+	},
+	"dependencies": {
+		"@earendil-works/pi-coding-agent": "^0.79.4",
+		"zeromq": "^6.0.0-beta.17",
+		"typia": "^12.1.1"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "latest",
+		"@types/node": "^24.0.0",
+		"@typia/unplugin": "^12.1.1",
+		"esbuild": "^0.25.0",
+		"typescript": "^5.9.3",
+		"vitest": "^3.0.0"
+	}
+}

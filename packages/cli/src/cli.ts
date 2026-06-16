@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-import { runBroker } from "@/src/broker.ts";
-import { health, publish, subscribe } from "@/src/client.ts";
-import { DEFAULT_ENDPOINTS } from "@/src/client.ts";
-import type { BusEndpoints } from "@/src/client.ts";
+import { runBroker, DEFAULT_ENDPOINTS } from "pi-notify";
+import { health, publish, subscribe } from "pi-notify";
+import type { BusEndpoints } from "pi-notify";
 
 const HELP = `
-pi-notify debug CLI
+pi-notify CLI client
 
 Commands:
   broker   [--xsub=URL] [--xpub=URL] [--control=URL]
@@ -153,7 +152,7 @@ async function cmdPublish(positional: string[], flags: Record<string, string>) {
 async function main() {
 	const { cmd, positional, flags } = parseArgs(process.argv.slice(2));
 
-	if (!cmd || flags["help"] || flags["h"]) {
+	if (!cmd || flags.help || flags.h) {
 		console.log(HELP);
 		process.exit(0);
 	}

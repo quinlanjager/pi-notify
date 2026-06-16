@@ -1,6 +1,6 @@
 import { defineConfig } from "vitest/config";
-import { fileURLToPath } from "url";
-import path from "path";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import UnpluginTypia from "@typia/unplugin/vite";
 
 const root = fileURLToPath(new URL(".", import.meta.url));

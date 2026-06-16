@@ -1,5 +1,7 @@
 node_modules/
 dist/
 bin/
+packages/*/dist/
+packages/*/bin/
 .pi/tasks/
 .DS_Store
