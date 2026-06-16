@@ -1,8 +1,11 @@
 {
-	"name": "pi-synapse-cli",
+	"name": "@pi-synapse/cli",
 	"version": "0.1.0",
 	"description": "CLI client for pi-synapse",
 	"type": "module",
+	"publishConfig": {
+		"access": "public"
+	},
 	"bin": {
 		"pi-synapse": "./bin/cli.js"
 	},
@@ -14,11 +17,13 @@
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies": {
-		"pi-synapse": "*",
+		"@pi-synapse/core": "*",
+		"yargs": "^17.7.2",
 		"zeromq": "^6.0.0-beta.17"
 	},
 	"devDependencies": {
 		"@types/node": "^24.0.0",
+		"@types/yargs": "^17.0.33",
 		"esbuild": "^0.25.0",
 		"typescript": "^5.9.3"
 	}

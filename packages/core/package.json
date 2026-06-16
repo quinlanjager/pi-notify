@@ -1,8 +1,11 @@
 {
-	"name": "pi-synapse",
+	"name": "@pi-synapse/core",
 	"version": "0.1.0",
 	"description": "Event bus designed for Pi agent",
 	"type": "module",
+	"publishConfig": {
+		"access": "public"
+	},
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
 	"exports": {

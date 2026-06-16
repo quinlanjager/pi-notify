@@ -1,83 +1,58 @@
 #!/usr/bin/env node
-import { runBroker, DEFAULT_ENDPOINTS } from "pi-synapse";
-import { health, publish, subscribe } from "pi-synapse";
-import type { BusEndpoints } from "pi-synapse";
+import yargs from "yargs";
+import { hideBin } from "yargs/helpers";
+import { runBroker, DEFAULT_ENDPOINTS } from "@pi-synapse/core";
+import { health, publish, subscribe } from "@pi-synapse/core";
+import type { BusEndpoints } from "@pi-synapse/core";
 
-const HELP = `
-pi-synapse CLI client
-
-Commands:
-  broker   [--xsub=URL] [--xpub=URL] [--control=URL]
-  ping     [--control=URL] [--timeout=MS]
-  subscribe <prefix> [--xpub=URL]
-  publish  <topic> <json> [--xsub=URL] [--control=URL] [--timeout=MS]
-
-Defaults:
-  xsub     ${DEFAULT_ENDPOINTS.xsub}
-  xpub     ${DEFAULT_ENDPOINTS.xpub}
-  control  ${DEFAULT_ENDPOINTS.control}
-  timeout  750ms
-`.trim();
-
-function parseArgs(argv: string[]): {
-	cmd: string | undefined;
-	positional: string[];
-	flags: Record<string, string>;
-} {
-	const positional: string[] = [];
-	const flags: Record<string, string> = {};
-
-	for (const arg of argv) {
-		if (arg.startsWith("--")) {
-			const eq = arg.indexOf("=");
-			if (eq === -1) {
-				flags[arg.slice(2)] = "true";
-			} else {
-				flags[arg.slice(2, eq)] = arg.slice(eq + 1);
-			}
-		} else {
-			positional.push(arg);
-		}
-	}
-
-	return { cmd: positional[0], positional: positional.slice(1), flags };
-}
-
-function endpoints(flags: Record<string, string>): Partial<BusEndpoints> {
+/**
+ * Resolve bus endpoints from environment variables. Unset vars fall back to
+ * DEFAULT_ENDPOINTS downstream.
+ *
+ *   PI_SYNAPSE_XSUB     publishers connect here (broker binds XSUB)
+ *   PI_SYNAPSE_XPUB     subscribers connect here (broker binds XPUB)
+ *   PI_SYNAPSE_CONTROL  control endpoint
+ */
+function endpoints(): Partial<BusEndpoints> {
 	const out: Partial<BusEndpoints> = {};
-	if (flags["xsub"]) out.xsub = flags["xsub"];
-	if (flags["xpub"]) out.xpub = flags["xpub"];
-	if (flags["control"]) out.control = flags["control"];
+	if (process.env.PI_SYNAPSE_XSUB) out.xsub = process.env.PI_SYNAPSE_XSUB;
+	if (process.env.PI_SYNAPSE_XPUB) out.xpub = process.env.PI_SYNAPSE_XPUB;
+	if (process.env.PI_SYNAPSE_CONTROL)
+		out.control = process.env.PI_SYNAPSE_CONTROL;
 	return out;
 }
 
-function timeoutMs(flags: Record<string, string>): number | undefined {
-	const v = flags["timeout"];
-	if (!v) return undefined;
-	const n = parseInt(v, 10);
-	return Number.isFinite(n) && n > 0 ? n : undefined;
+function timeoutOpt(t: number | undefined): { timeoutMs: number } | object {
+	return t && t > 0 ? { timeoutMs: t } : {};
 }
 
 function fmt(obj: unknown): string {
 	return JSON.stringify(obj, null, 2);
 }
 
-async function cmdBroker(flags: Record<string, string>) {
-	const ep = endpoints(flags);
+function runIndefinitely(cleanup: () => void): Promise<never> {
+	process.once("SIGINT", () => {
+		cleanup();
+		process.exit(0);
+	});
+	return new Promise(() => {});
+}
+
+async function cmdBroker() {
+	const ep = endpoints();
 	const merged = { ...DEFAULT_ENDPOINTS, ...ep };
-	console.log(`broker starting`);
+	console.log("broker starting");
 	console.log(`  xsub    ${merged.xsub}`);
 	console.log(`  xpub    ${merged.xpub}`);
 	console.log(`  control ${merged.control}`);
 	await runBroker({ endpoints: ep });
-	console.log(`broker running (Ctrl+C to stop)`);
-	await new Promise(() => {});
+	console.log("broker running (Ctrl+C to stop)");
+	await runIndefinitely(() => {});
 }
 
-async function cmdPing(flags: Record<string, string>) {
-	const ep = endpoints(flags);
-	const t = timeoutMs(flags);
-	const ok = await health({ endpoints: ep, ...(t ? { timeoutMs: t } : {}) });
+async function cmdPing(timeout: number | undefined) {
+	const ep = endpoints();
+	const ok = await health({ endpoints: ep, ...timeoutOpt(timeout) });
 	if (ok) {
 		console.log("PONG");
 		process.exit(0);
@@ -87,16 +62,8 @@ async function cmdPing(flags: Record<string, string>) {
 	}
 }
 
-async function cmdSubscribe(
-	positional: string[],
-	flags: Record<string, string>,
-) {
-	const prefix = positional[0];
-	if (!prefix) {
-		console.error("subscribe requires <prefix>");
-		process.exit(1);
-	}
-	const ep = endpoints(flags);
+async function cmdSubscribe(prefix: string) {
+	const ep = endpoints();
 	console.log(
 		`subscribing to "${prefix}" on ${ep.xpub ?? DEFAULT_ENDPOINTS.xpub}`,
 	);
@@ -109,23 +76,14 @@ async function cmdSubscribe(
 		{ endpoints: ep },
 	);
 
-	process.once("SIGINT", () => {
-		unsub();
-		process.exit(0);
-	});
-
-	await new Promise(() => {});
+	await runIndefinitely(unsub);
 }
 
-async function cmdPublish(positional: string[], flags: Record<string, string>) {
-	const topic = positional[0];
-	const jsonStr = positional[1];
-
-	if (!topic || !jsonStr) {
-		console.error("publish requires <topic> <json>");
-		process.exit(1);
-	}
-
+async function cmdPublish(
+	topic: string,
+	jsonStr: string,
+	timeout: number | undefined,
+) {
 	let payload: unknown;
 	try {
 		payload = JSON.parse(jsonStr);
@@ -134,11 +92,10 @@ async function cmdPublish(positional: string[], flags: Record<string, string>) {
 		process.exit(1);
 	}
 
-	const ep = endpoints(flags);
-	const t = timeoutMs(flags);
+	const ep = endpoints();
 	const result = await publish(topic, payload, {
 		endpoints: ep,
-		...(t ? { timeoutMs: t } : {}),
+		...timeoutOpt(timeout),
 	});
 
 	if (result.ok) {
@@ -149,35 +106,57 @@ async function cmdPublish(positional: string[], flags: Record<string, string>) {
 	}
 }
 
-async function main() {
-	const { cmd, positional, flags } = parseArgs(process.argv.slice(2));
-
-	if (!cmd || flags.help || flags.h) {
-		console.log(HELP);
-		process.exit(0);
-	}
-
-	switch (cmd) {
-		case "broker":
-			await cmdBroker(flags);
-			break;
-		case "ping":
-			await cmdPing(flags);
-			break;
-		case "subscribe":
-			await cmdSubscribe(positional, flags);
-			break;
-		case "publish":
-			await cmdPublish(positional, flags);
-			break;
-		default:
-			console.error(`unknown command: ${cmd}`);
-			console.log(HELP);
-			process.exit(1);
-	}
-}
-
-main().catch((err) => {
-	console.error(err);
-	process.exit(1);
-});
+await yargs(hideBin(process.argv))
+	.scriptName("pi-synapse")
+	.usage("$0 <command> [options]")
+	.epilogue(
+		"Endpoints are set via env vars: PI_SYNAPSE_XSUB, PI_SYNAPSE_XPUB, PI_SYNAPSE_CONTROL.",
+	)
+	.command("broker", "start the message broker", (y) => y, cmdBroker)
+	.command(
+		"ping",
+		"check broker reachability",
+		(y) =>
+			y.option("timeout", {
+				type: "number",
+				describe: "timeout in ms (default 750)",
+			}),
+		(argv) => cmdPing(argv.timeout),
+	)
+	.command(
+		"subscribe <prefix>",
+		"subscribe to topics matching <prefix>",
+		(y) =>
+			y.positional("prefix", {
+				type: "string",
+				describe: "topic prefix to subscribe to",
+				demandOption: true,
+			}),
+		(argv) => cmdSubscribe(argv.prefix),
+	)
+	.command(
+		"publish <topic> <json>",
+		"publish a JSON payload to <topic>",
+		(y) =>
+			y
+				.positional("topic", {
+					type: "string",
+					describe: "topic to publish to",
+					demandOption: true,
+				})
+				.positional("json", {
+					type: "string",
+					describe: "JSON payload",
+					demandOption: true,
+				})
+				.option("timeout", {
+					type: "number",
+					describe: "timeout in ms (default 750)",
+				}),
+		(argv) => cmdPublish(argv.topic, argv.json, argv.timeout),
+	)
+	.demandCommand(1, "specify a command")
+	.strict()
+	.help()
+	.alias("help", "h")
+	.parse();
