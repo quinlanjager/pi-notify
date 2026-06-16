@@ -10,6 +10,11 @@ import type {
 import { health, publish, subscribe } from "@/src/client.ts";
 import { runBroker } from "@/src/broker.ts";
 import { Type } from "typebox";
+import {
+	ctxMeta,
+	synapsePublishExecute,
+	normalizeMeta,
+} from "@/src/pi/tools.ts";
 
 export type RegisterOptions = {
 	agent?: { name?: string; role?: string; tags?: string[] };
@@ -40,37 +45,6 @@ export type PiSynapse = {
 	subscribe(prefix: string, handler: SubscribeHandler): Promise<() => void>;
 	health(): Promise<boolean>;
 };
-
-function normalizeMeta(
-	meta: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
-	if (!meta) return undefined;
-	return Object.keys(meta).length > 0 ? meta : undefined;
-}
-
-function ctxMeta(
-	ctx: ExtensionContext | undefined,
-): Record<string, unknown> | undefined {
-	if (!ctx) return undefined;
-
-	const out: Record<string, unknown> = {};
-
-	if (ctx.cwd) out.cwd = ctx.cwd;
-
-	const sessionFile = ctx.sessionManager.getSessionFile();
-	if (sessionFile) out.sessionFile = sessionFile;
-
-	const runId = process.env.PI_AGENT_RUN_ID;
-	if (runId) out.piRunId = runId;
-
-	const groupId = process.env.PI_AGENT_GROUP_ID;
-	if (groupId) out.piGroupId = groupId;
-
-	const parentRunId = process.env.PI_AGENT_PARENT_RUN_ID;
-	if (parentRunId) out.piParentRunId = parentRunId;
-
-	return normalizeMeta(out);
-}
 
 export async function register(
 	pi: ExtensionAPI,
@@ -115,7 +89,7 @@ export async function register(
 
 	const publishImpl: PiSynapse["publish"] = async (
 		topic,
-		payload,
+		message,
 		callOpts = {},
 	) => {
 		const metaRaw: Record<string, unknown> = {};
@@ -128,7 +102,8 @@ export async function register(
 		if (callOpts.meta) Object.assign(metaRaw, callOpts.meta);
 
 		const meta = normalizeMeta(metaRaw);
-		return transportPublish(topic, payload, {
+
+		return transportPublish(topic, message, {
 			...(opts.bus ?? {}),
 			...(meta !== undefined ? { meta } : {}),
 		});
@@ -182,31 +157,11 @@ export async function register(
 			description:
 				"Publish a notification to the synapse bus. Provide a dot-delimited topic and a text payload.",
 			parameters: PublishParams,
-			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-				const res = await publishImpl(params.topic, params.payload, { ctx });
-				if (res.ok) {
-					return {
-						content: [
-							{ type: "text", text: `Published to "${params.topic}".` },
-						],
-						details: { ok: true, topic: params.topic },
-					};
-				}
-				return {
-					content: [
-						{
-							type: "text",
-							text: `Publish failed (${res.code}): ${res.error}`,
-						},
-					],
-					details: {
-						ok: false,
-						topic: params.topic,
-						code: res.code,
-						error: res.error,
-					},
-				};
-			},
+			execute: synapsePublishExecute({
+				transportPublish,
+				...(baseMeta !== undefined ? { baseMeta } : {}),
+				...(opts.bus !== undefined ? { busOpts: opts.bus } : {}),
+			}),
 		});
 	}
 
