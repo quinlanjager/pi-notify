@@ -8,6 +8,7 @@ import type {
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
 import { health, publish, subscribe } from "@/src/client.ts";
+import { runBroker } from "@/src/broker.ts";
 
 export type RegisterOptions = {
 	agent?: { name?: string; role?: string; tags?: string[] };
@@ -94,7 +95,12 @@ export async function register(
 
 	pi.on("session_start", async (_event, ctx) => {
 		if (!ctx.hasUI) return;
-		const ok = await transportHealth(opts.bus ?? {});
+		let ok = await transportHealth(opts.bus ?? {});
+		if (!ok) {
+			await runBroker();
+		}
+		ok = await transportHealth(opts.bus ?? {});
+
 		ctx.ui.setStatus(statusKey, ok ? "connected" : "offline");
 	});
 

@@ -19,13 +19,13 @@ export async function runBroker(opts: BrokerOptions = {}): Promise<() => void> {
 		await xpub.bind(endpoints.xpub);
 		await control.bind(endpoints.control);
 	} catch (err) {
+		if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
+			process.exit(0);
+			return () => {};
+		}
 		xsub.close();
 		xpub.close();
 		control.close();
-		if ((err as NodeJS.ErrnoException).code === "EADDRINUSE") {
-			process.exit(0);
-		}
-		throw err;
 	}
 
 	// Publisher messages: XSUB → XPUB
