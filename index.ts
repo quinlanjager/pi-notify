@@ -1,4 +1,4 @@
-export type { NotifyEnvelope } from "@/src/notify.ts";
+export type { NotificationEnvelope } from "@/src/notification.ts";
 export type {
 	BusEndpoints,
 	PublishResult,

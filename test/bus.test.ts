@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, expect, test } from "vitest";
 
 import { runBroker } from "@/src/broker.ts";
-import type { NotifyEnvelope } from "@/src/notify.ts";
+import type { NotificationEnvelope } from "@/src/notification.ts";
 import type { BusEndpoints } from "@/src/client.ts";
 import { health, publish, subscribe } from "@/src/client.ts";
 import { getFreePorts } from "./helpers/get-free-ports.ts";
@@ -32,7 +32,7 @@ test("health returns true when broker running", async () => {
 });
 
 test("publish → subscribe delivers message", async () => {
-	const received: NotifyEnvelope[] = [];
+	const received: NotificationEnvelope[] = [];
 
 	const unsub = await subscribe(
 		"test.",

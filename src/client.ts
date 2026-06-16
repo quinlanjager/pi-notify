@@ -2,8 +2,8 @@ import { Publisher, Subscriber, Request as ZmqRequest } from "zeromq";
 import typia from "typia";
 import { hostname as osHostname } from "node:os";
 
-import type { NotifyEnvelope } from "@/src/notify.ts";
-import { makeEnvelope, normalizeTopic } from "@/src/notify.ts";
+import type { NotificationEnvelope } from "@/src/notification.ts";
+import { makeEnvelope, normalizeTopic } from "@/src/notification.ts";
 
 export type BusEndpoints = {
 	/** Publishers connect here (broker binds XSUB). */
@@ -28,7 +28,9 @@ export const DEFAULT_ENDPOINTS: BusEndpoints = {
 	control: "tcp://127.0.0.1:47838",
 };
 
-export type SubscribeHandler = (msg: NotifyEnvelope) => void | Promise<void>;
+export type SubscribeHandler = (
+	msg: NotificationEnvelope,
+) => void | Promise<void>;
 
 export type PublishOptions = {
 	endpoints?: Partial<BusEndpoints>;
@@ -145,7 +147,7 @@ export async function subscribe(
 			if (!data) {
 				continue;
 			}
-			const parsed = typia.json.isParse<NotifyEnvelope>(data.toString());
+			const parsed = typia.json.isParse<NotificationEnvelope>(data.toString());
 			if (parsed) {
 				await handler(parsed);
 			}

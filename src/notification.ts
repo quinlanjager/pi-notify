@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-export type NotifyEnvelope<T = unknown> = {
+export type NotificationEnvelope<T = unknown> = {
 	v: 1;
 	id: string;
 	ts: number;
@@ -34,7 +34,7 @@ export function makeEnvelope<T>(
 	payload: T,
 	source: EnvelopeSource,
 	meta?: Record<string, unknown>,
-): NotifyEnvelope<T> {
+): NotificationEnvelope<T> {
 	return {
 		v: 1,
 		id: randomUUID(),
