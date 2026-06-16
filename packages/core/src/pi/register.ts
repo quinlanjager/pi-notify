@@ -3,10 +3,7 @@ import type {
 	PublishResult,
 	SubscribeHandler,
 } from "@/src/client.ts";
-import type {
-	ExtensionAPI,
-	ExtensionContext,
-} from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { health, publish, subscribe } from "@/src/client.ts";
 import { runBroker } from "@/src/broker.ts";
 import { Type } from "typebox";
