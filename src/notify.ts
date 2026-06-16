@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 export type BusEndpoints = {
 	/** Publishers connect here (broker binds XSUB). */
 	xsub: string;
@@ -40,3 +42,32 @@ export const DEFAULT_ENDPOINTS: BusEndpoints = {
 	xpub: "tcp://127.0.0.1:47837",
 	control: "tcp://127.0.0.1:47838",
 };
+
+export type EnvelopeProvenance = {
+	pid: number;
+	hostname?: string;
+};
+
+export function normalizeTopic(input: string): string | undefined {
+	const topic = input.trim();
+	if (!topic) return undefined;
+	return topic;
+}
+
+export function makeEnvelope<T>(
+	topic: string,
+	payload: T,
+	provenance: EnvelopeProvenance,
+	meta?: Record<string, unknown>,
+): NotifyEnvelope<T> {
+	return {
+		v: 1,
+		id: randomUUID(),
+		ts: Date.now(),
+		topic,
+		pid: provenance.pid,
+		...(provenance.hostname ? { hostname: provenance.hostname } : {}),
+		payload,
+		...(meta ? { meta } : {}),
+	};
+}

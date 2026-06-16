@@ -17,17 +17,22 @@
 	],
 	"scripts": {
 		"build": "bun build index.ts --outdir dist --target node --format esm",
-		"build:types": "tsc -p tsconfig.build.json",
+		"build:types": "bunx tsc -p tsconfig.build.json",
 		"prepublishOnly": "bun run build && bun run build:types",
 		"test": "bun test",
 		"test:watch": "bun test --watch",
-		"typecheck": "tsc --noEmit",
-		"lint": "biome lint ."
+		"format": "bunx biome format --write .",
+		"lint": "bunx biome lint .",
+		"typecheck": "bunx tsc --noEmit",
+		"check": "bun run format && bun run lint && bun run typecheck",
+		"hooks:install": "bunx lefthook install",
+		"hooks:run": "bunx lefthook run pre-commit"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "latest",
 		"@types/node": "^24.0.0",
 		"bun-types": "latest",
+		"lefthook": "^1.7.17",
 		"typescript": "^5.9.3"
 	},
 	"pi": {

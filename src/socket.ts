@@ -1,16 +1,15 @@
 import type {
 	BusEndpoints,
+	NotifyEnvelope,
 	PublishResult,
 	SubscribeHandler,
-} from "@/src/lib/notify-types.ts";
-import { DEFAULT_ENDPOINTS } from "@/src/lib/notify-types.ts";
-import { hostname as osHostname } from "node:os";
-import { makeEnvelope, normalizeTopic } from "@/src/lib/notify-domain.ts";
+} from "@/src/notify.ts";
 import {
-	processHealth,
-	processPublish,
-	processSubscribe,
-} from "@/src/process/zmq-client.ts";
+	makeEnvelope,
+	normalizeTopic,
+	DEFAULT_ENDPOINTS,
+} from "@/src//notify.ts";
+import { hostname as osHostname } from "node:os";
 
 export type PublishOptions = {
 	endpoints?: Partial<BusEndpoints>;
@@ -27,6 +26,14 @@ export type HealthOptions = {
 	endpoints?: Partial<BusEndpoints>;
 	timeoutMs?: number;
 };
+
+export type SocketClientOptions = {
+	endpoints: BusEndpoints;
+	timeoutMs: number;
+};
+
+// Back-compat name (pre-unification)
+export type ZmqClientOptions = SocketClientOptions;
 
 function resolveEndpoints(partial?: Partial<BusEndpoints>): BusEndpoints {
 	return {
@@ -83,4 +90,36 @@ export async function subscribe(
 		endpoints: resolveEndpoints(opts.endpoints),
 		timeoutMs: resolveTimeoutMs(opts.timeoutMs),
 	});
+}
+
+// ---------------------------------------------------------------------------
+// Process/integration layer.
+// Owns sockets. Stubbed for now.
+// ---------------------------------------------------------------------------
+
+export async function processHealth(
+	_opts: SocketClientOptions,
+): Promise<boolean> {
+	return false;
+}
+
+export async function processPublish(
+	_env: NotifyEnvelope,
+	_opts: SocketClientOptions,
+): Promise<PublishResult> {
+	return {
+		ok: false,
+		code: "NOT_IMPLEMENTED",
+		error: "publish() not implemented yet",
+	};
+}
+
+export async function processSubscribe(
+	_prefix: string,
+	_handler: SubscribeHandler,
+	_opts: SocketClientOptions,
+): Promise<() => void> {
+	return () => {
+		// no-op
+	};
 }

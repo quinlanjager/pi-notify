@@ -2,12 +2,12 @@ import type {
 	BusEndpoints,
 	PublishResult,
 	SubscribeHandler,
-} from "@/src/lib/notify-types.ts";
+} from "@/src/notify.ts";
 import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { health, publish, subscribe } from "@/src/client.ts";
+import { health, publish, subscribe } from "@/src/socket.ts";
 
 export type RegisterOptions = {
 	agent?: { name?: string; role?: string; tags?: string[] };

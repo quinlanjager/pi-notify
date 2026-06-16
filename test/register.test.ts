@@ -2,28 +2,36 @@ import type {
 	ExtensionAPI,
 	ExtensionContext,
 } from "@earendil-works/pi-coding-agent";
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 
 import { register } from "@/src/pi/register.ts";
-import type { PublishResult } from "@/src/lib/notify-types.ts";
+import type { PublishResult } from "@/src/notify.ts";
+
+type SessionHandler = (
+	event: unknown,
+	ctx: ExtensionContext,
+) => unknown | Promise<unknown>;
+
+type CtxWithStatusCalls = ExtensionContext & {
+	__statusCalls: Array<{ key: string; value: string | undefined }>;
+};
 
 function makePiHarness(): {
 	pi: ExtensionAPI;
-	handlers: Map<string, (event: any, ctx: ExtensionContext) => any>;
+	handlers: Map<string, SessionHandler>;
 } {
-	const handlers = new Map<
-		string,
-		(event: any, ctx: ExtensionContext) => any
-	>();
+	const handlers = new Map<string, SessionHandler>();
 	const pi = {
 		on(event, handler) {
-			handlers.set(event, handler);
+			handlers.set(event, handler as SessionHandler);
 		},
 	} as ExtensionAPI;
 	return { pi, handlers };
 }
 
-function makeCtx(overrides: Partial<ExtensionContext> = {}): ExtensionContext {
+function makeCtx(
+	overrides: Partial<ExtensionContext> = {},
+): CtxWithStatusCalls {
 	const statusCalls: Array<{ key: string; value: string | undefined }> = [];
 
 	const base = {
@@ -43,9 +51,9 @@ function makeCtx(overrides: Partial<ExtensionContext> = {}): ExtensionContext {
 		},
 	};
 
-	const ctx = Object.assign(base, overrides);
-	(ctx as any).__statusCalls = statusCalls;
-	return ctx as ExtensionContext;
+	const ctx = Object.assign(base, overrides) as unknown as CtxWithStatusCalls;
+	ctx.__statusCalls = statusCalls;
+	return ctx;
 }
 
 test("register: sets status connected/offline on session_start when UI present", async () => {
@@ -60,14 +68,11 @@ test("register: sets status connected/offline on session_start when UI present",
 	const ctx = makeCtx();
 	const onStart = handlers.get("session_start");
 	expect(onStart).toBeTruthy();
+	if (!onStart) throw new Error("missing session_start handler");
 
-	await onStart!({}, ctx);
+	await onStart({}, ctx);
 
-	const calls = (ctx as any).__statusCalls as Array<{
-		key: string;
-		value: string | undefined;
-	}>;
-	expect(calls).toEqual([{ key: "pi-notify", value: "connected" }]);
+	expect(ctx.__statusCalls).toEqual([{ key: "pi-notify", value: "connected" }]);
 });
 
 test("register: clears status on session_shutdown", async () => {
@@ -82,14 +87,11 @@ test("register: clears status on session_shutdown", async () => {
 	const ctx = makeCtx();
 	const onShutdown = handlers.get("session_shutdown");
 	expect(onShutdown).toBeTruthy();
+	if (!onShutdown) throw new Error("missing session_shutdown handler");
 
-	await onShutdown!({}, ctx);
+	await onShutdown({}, ctx);
 
-	const calls = (ctx as any).__statusCalls as Array<{
-		key: string;
-		value: string | undefined;
-	}>;
-	expect(calls).toEqual([{ key: "pi-notify", value: undefined }]);
+	expect(ctx.__statusCalls).toEqual([{ key: "pi-notify", value: undefined }]);
 });
 
 test("register: does not touch UI when hasUI is false", async () => {
@@ -104,19 +106,20 @@ test("register: does not touch UI when hasUI is false", async () => {
 	const ctx = makeCtx({ hasUI: false });
 	const onStart = handlers.get("session_start");
 	expect(onStart).toBeTruthy();
-	await onStart!({}, ctx);
+	if (!onStart) throw new Error("missing session_start handler");
 
-	const calls = (ctx as any).__statusCalls as Array<{
-		key: string;
-		value: string | undefined;
-	}>;
-	expect(calls).toEqual([]);
+	await onStart({}, ctx);
+
+	expect(ctx.__statusCalls).toEqual([]);
 });
 
 test("register: merges register meta + ctx meta + per-call meta; per-call wins", async () => {
 	const { pi } = makePiHarness();
 
-	const captured: Array<{ topic: string; meta: any }> = [];
+	const captured: Array<{
+		topic: string;
+		meta: Record<string, unknown> | undefined;
+	}> = [];
 	const ok: PublishResult = { ok: true };
 
 	const prevEnv = {
@@ -179,7 +182,7 @@ test("register: merges register meta + ctx meta + per-call meta; per-call wins",
 test("register: meta omitted when empty", async () => {
 	const { pi } = makePiHarness();
 
-	const captured: any[] = [];
+	const captured: Array<unknown> = [];
 
 	const notify = await register(pi, {
 		transport: {
@@ -193,5 +196,5 @@ test("register: meta omitted when empty", async () => {
 	await notify.publish("t", { a: 1 });
 
 	expect(captured.length).toBe(1);
-	expect(captured[0]?.meta).toBeUndefined();
+	expect((captured[0] as { meta?: unknown } | undefined)?.meta).toBeUndefined();
 });
