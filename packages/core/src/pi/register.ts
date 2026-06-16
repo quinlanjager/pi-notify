@@ -9,12 +9,16 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { health, publish, subscribe } from "@/src/client.ts";
 import { runBroker } from "@/src/broker.ts";
+import { Type } from "typebox";
 
 export type RegisterOptions = {
 	agent?: { name?: string; role?: string; tags?: string[] };
 	meta?: Record<string, unknown>;
 	bus?: { endpoints?: Partial<BusEndpoints>; timeoutMs?: number };
 	statusKey?: string;
+
+	/** Register an LLM-callable tool for publishing notifications. Default: false. */
+	tools?: boolean;
 
 	/**
 	 * Advanced/testing: override underlying bus functions.
@@ -161,6 +165,50 @@ export async function register(
 			}
 		},
 	});
+
+	if (opts.tools) {
+		const PublishParams = Type.Object({
+			topic: Type.String({
+				description: 'Topic to publish to, e.g. "alerts.deploy".',
+			}),
+			payload: Type.String({
+				description: "Message body (sent as a raw string).",
+			}),
+		});
+
+		pi.registerTool({
+			name: "synapse_publish",
+			label: "Synapse Publish",
+			description:
+				"Publish a notification to the synapse bus. Provide a dot-delimited topic and a text payload.",
+			parameters: PublishParams,
+			async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+				const res = await publishImpl(params.topic, params.payload, { ctx });
+				if (res.ok) {
+					return {
+						content: [
+							{ type: "text", text: `Published to "${params.topic}".` },
+						],
+						details: { ok: true, topic: params.topic },
+					};
+				}
+				return {
+					content: [
+						{
+							type: "text",
+							text: `Publish failed (${res.code}): ${res.error}`,
+						},
+					],
+					details: {
+						ok: false,
+						topic: params.topic,
+						code: res.code,
+						error: res.error,
+					},
+				};
+			},
+		});
+	}
 
 	return {
 		publish: publishImpl,

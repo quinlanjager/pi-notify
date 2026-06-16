@@ -18,13 +18,29 @@ type CtxWithStatusCalls = ExtensionContext & {
 
 type CommandHandler = (args: string, ctx: ExtensionContext) => Promise<void>;
 
+type ToolDef = {
+	name: string;
+	execute: (
+		toolCallId: string,
+		params: Record<string, unknown>,
+		signal: AbortSignal | undefined,
+		onUpdate: unknown,
+		ctx: ExtensionContext,
+	) => Promise<{
+		content: Array<{ type: string; text?: string }>;
+		details: Record<string, unknown>;
+	}>;
+};
+
 function makePiHarness(): {
 	pi: ExtensionAPI;
 	handlers: Map<string, SessionHandler>;
 	commands: Map<string, { handler: CommandHandler }>;
+	tools: Map<string, ToolDef>;
 } {
 	const handlers = new Map<string, SessionHandler>();
 	const commands = new Map<string, { handler: CommandHandler }>();
+	const tools = new Map<string, ToolDef>();
 	const pi = {
 		on(event: string, handler: SessionHandler) {
 			handlers.set(event, handler);
@@ -32,8 +48,11 @@ function makePiHarness(): {
 		registerCommand(name: string, options: { handler: CommandHandler }) {
 			commands.set(name, options);
 		},
+		registerTool(tool: ToolDef) {
+			tools.set(tool.name, tool);
+		},
 	} as unknown as ExtensionAPI;
-	return { pi, handlers, commands };
+	return { pi, handlers, commands, tools };
 }
 
 function makeCtx(
@@ -296,4 +315,74 @@ test("register: synapse:publish command prompts when args are empty", async () =
 	expect(ctx.__notifyCalls).toEqual([
 		{ message: 'Published to "alerts.test".', type: "info" },
 	]);
+});
+
+test("register: synapse_publish tool not registered by default", async () => {
+	const { pi, tools } = makePiHarness();
+
+	await register(pi, {
+		transport: { publish: async () => ({ ok: true }) },
+	});
+
+	expect(tools.has("synapse_publish")).toBe(false);
+});
+
+test("register: synapse_publish tool registered + publishes when tools opt-in", async () => {
+	const { pi, tools } = makePiHarness();
+
+	const captured: Array<{ topic: string; payload: unknown }> = [];
+	await register(pi, {
+		tools: true,
+		transport: {
+			publish: async (topic, payload) => {
+				captured.push({ topic, payload });
+				return { ok: true };
+			},
+		},
+	});
+
+	const tool = tools.get("synapse_publish");
+	expect(tool).toBeTruthy();
+	if (!tool) throw new Error("missing synapse_publish tool");
+
+	const res = await tool.execute(
+		"call-1",
+		{ topic: "alerts.deploy", payload: "shipped" },
+		undefined,
+		undefined,
+		makeCtx(),
+	);
+
+	expect(captured).toEqual([{ topic: "alerts.deploy", payload: "shipped" }]);
+	expect(res.content[0]?.text).toBe('Published to "alerts.deploy".');
+	expect(res.details.ok).toBe(true);
+});
+
+test("register: synapse_publish tool reports publish failure", async () => {
+	const { pi, tools } = makePiHarness();
+
+	await register(pi, {
+		tools: true,
+		transport: {
+			publish: async () => ({
+				ok: false,
+				code: "BROKER_UNAVAILABLE",
+				error: "x",
+			}),
+		},
+	});
+
+	const tool = tools.get("synapse_publish");
+	if (!tool) throw new Error("missing synapse_publish tool");
+
+	const res = await tool.execute(
+		"call-1",
+		{ topic: "alerts.deploy", payload: "shipped" },
+		undefined,
+		undefined,
+		makeCtx(),
+	);
+
+	expect(res.details.ok).toBe(false);
+	expect(res.content[0]?.text).toBe("Publish failed (BROKER_UNAVAILABLE): x");
 });
