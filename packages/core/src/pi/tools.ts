@@ -1,19 +1,14 @@
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
-import type {
-	BusEndpoints,
-	PublishOptions,
-	PublishResult,
-} from "@/src/client.ts";
+import type { PublishResult } from "@/src/client.ts";
 
 export type TransportPublish = (
 	topic: string,
 	payload: unknown,
-	opts?: PublishOptions,
+	opts?: { meta?: Record<string, unknown> },
 ) => Promise<PublishResult>;
 
 export type SynapsePublishToolDeps = {
 	transportPublish: TransportPublish;
-	busOpts?: { endpoints?: Partial<BusEndpoints>; timeoutMs?: number };
 };
 
 export type SynapsePublishExecuteResult = {
@@ -36,9 +31,7 @@ export function synapsePublishExecute(deps: SynapsePublishToolDeps) {
 		_onUpdate: unknown,
 		_ctx: ExtensionContext,
 	): Promise<SynapsePublishExecuteResult> {
-		const res = await deps.transportPublish(params.topic, params.payload, {
-			...(deps.busOpts ?? {}),
-		});
+		const res = await deps.transportPublish(params.topic, params.payload);
 
 		if (res.ok) {
 			return {

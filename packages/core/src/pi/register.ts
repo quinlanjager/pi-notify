@@ -1,8 +1,4 @@
-import type {
-	BusEndpoints,
-	PublishResult,
-	SubscribeHandler,
-} from "@/src/client.ts";
+import type { PublishResult, SubscribeHandler } from "@/src/client.ts";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { health, publish, subscribe } from "@/src/client.ts";
 import { runBroker } from "@/src/broker.ts";
@@ -10,7 +6,6 @@ import { Type } from "typebox";
 import { synapsePublishExecute, normalizeMeta } from "@/src/pi/tools.ts";
 
 export type RegisterOptions = {
-	bus?: { endpoints?: Partial<BusEndpoints>; timeoutMs?: number };
 	statusKey?: string;
 
 	/** Register an LLM-callable tool for publishing notifications. Default: false. */
@@ -52,11 +47,11 @@ export async function register(
 
 	pi.on("session_start", async (_event, ctx) => {
 		if (!ctx.hasUI) return;
-		let ok = await transportHealth(opts.bus ?? {});
+		let ok = await transportHealth();
 		if (!ok) {
 			await runBroker();
 		}
-		ok = await transportHealth(opts.bus ?? {});
+		ok = await transportHealth();
 
 		ctx.ui.setStatus(statusKey, ok ? "connected" : "offline");
 	});
@@ -72,10 +67,11 @@ export async function register(
 		callOpts = {},
 	) => {
 		const meta = normalizeMeta(callOpts.meta);
-		return transportPublish(topic, message, {
-			...(opts.bus ?? {}),
-			...(meta !== undefined ? { meta } : {}),
-		});
+		return transportPublish(
+			topic,
+			message,
+			meta !== undefined ? { meta } : undefined,
+		);
 	};
 
 	pi.registerCommand("synapse:publish", {
@@ -126,20 +122,17 @@ export async function register(
 			description:
 				"Publish a notification to the synapse bus. Provide a dot-delimited topic and a text payload.",
 			parameters: PublishParams,
-			execute: synapsePublishExecute({
-				transportPublish,
-				...(opts.bus !== undefined ? { busOpts: opts.bus } : {}),
-			}),
+			execute: synapsePublishExecute({ transportPublish }),
 		});
 	}
 
 	return {
 		publish: publishImpl,
 		async subscribe(prefix, handler) {
-			return transportSubscribe(prefix, handler, opts.bus ?? {});
+			return transportSubscribe(prefix, handler);
 		},
 		async health() {
-			return transportHealth(opts.bus ?? {});
+			return transportHealth();
 		},
 	};
 }

@@ -106,22 +106,3 @@ test("synapsePublishExecute: no meta in publish opts by default", async () => {
 		(calls[0]?.opts as { meta?: unknown } | undefined)?.meta,
 	).toBeUndefined();
 });
-
-test("synapsePublishExecute: passes busOpts through to transport", async () => {
-	const { fn, calls } = makeTransport();
-	const busOpts = {
-		endpoints: { xsub: "tcp://localhost:9999" },
-		timeoutMs: 500,
-	};
-	const execute = synapsePublishExecute({ transportPublish: fn, busOpts });
-
-	await execute(
-		"c",
-		{ topic: "t", payload: "p" },
-		undefined,
-		undefined,
-		makeCtx(),
-	);
-
-	expect(calls[0]?.opts).toMatchObject(busOpts);
-});
