@@ -1,5 +1,5 @@
 import { build } from "esbuild";
-import { fileURLToPath } from "url";
+import { fileURLToPath } from "node:url";
 import UnpluginTypia from "@typia/unplugin/esbuild";
 
 const root = fileURLToPath(new URL(".", import.meta.url));

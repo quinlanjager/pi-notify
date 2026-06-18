@@ -53,19 +53,33 @@ export default function afterEditChecks(pi: ExtensionAPI) {
 	let queue: Promise<void> = Promise.resolve();
 
 	pi.on("tool_execution_end", async (event, ctx) => {
-		if (!ctx.isProjectTrusted()) return;
-		if (!ctx.hasUI) return;
+		if (!ctx.isProjectTrusted()) {
+			return;
+		}
+		if (!ctx.hasUI) {
+			return;
+		}
 
-		if (event.toolName !== "edit" && event.toolName !== "write") return;
+		if (event.toolName !== "edit" && event.toolName !== "write") {
+			return;
+		}
 
 		const p = (event.args as { path?: unknown } | undefined)?.path;
-		if (typeof p === "string" && p.length > 0) touchedPaths.add(p);
+		if (typeof p === "string" && p.length > 0) {
+			touchedPaths.add(p);
+		}
 	});
 
 	pi.on("turn_end", async (_event, ctx) => {
-		if (!ctx.isProjectTrusted()) return;
-		if (!ctx.hasUI) return;
-		if (touchedPaths.size === 0) return;
+		if (!ctx.isProjectTrusted()) {
+			return;
+		}
+		if (!ctx.hasUI) {
+			return;
+		}
+		if (touchedPaths.size === 0) {
+			return;
+		}
 
 		const paths = [...touchedPaths];
 		touchedPaths.clear();

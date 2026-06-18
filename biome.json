@@ -3,10 +3,13 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"preset": "recommended"
+			"preset": "recommended",
+			"style": {
+				"useBlockStatements": "error"
+			}
 		}
 	},
 	"files": {
-		"includes": ["**", "!dist", "!node_modules"]
+		"includes": ["**", "!**/dist", "!**/node_modules", "!packages/cli/bin"]
 	}
 }

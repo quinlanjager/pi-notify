@@ -1,14 +1,14 @@
 pre-commit:
   parallel: true
   commands:
-    biome_format:
+    format:
       glob: "**/*.{ts,tsx,js,jsx,json,md,yml,yaml}"
-      run: npx biome format --write {staged_files}
+      run: npm run format
       stage_fixed: true
-    biome_lint:
+    lint:
       glob: "**/*.{ts,tsx,js,jsx}"
-      run: npx biome lint {staged_files}
-    tsc:
-      run: npm run typecheck --workspaces --if-present
+      run: npm run lint
+    typecheck:
+      run: npm run typecheck
     test:
-      run: npm test --workspaces --if-present
+      run: npm run test

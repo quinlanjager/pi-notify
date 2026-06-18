@@ -135,7 +135,9 @@ export async function subscribe(
 	opts: SubscribeOptions = {},
 ): Promise<() => void> {
 	const pfx = normalizeTopic(prefix);
-	if (!pfx) throw new Error("Invalid subscription prefix");
+	if (!pfx) {
+		throw new Error("Invalid subscription prefix");
+	}
 
 	const endpoints = resolveEndpoints(opts.endpoints);
 	const sock = new Subscriber();

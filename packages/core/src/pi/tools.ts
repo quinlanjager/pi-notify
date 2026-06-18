@@ -19,7 +19,9 @@ export type SynapsePublishExecuteResult = {
 export function normalizeMeta(
 	meta: Record<string, unknown> | undefined,
 ): Record<string, unknown> | undefined {
-	if (!meta) return undefined;
+	if (!meta) {
+		return undefined;
+	}
 	return Object.keys(meta).length > 0 ? meta : undefined;
 }
 

@@ -46,7 +46,9 @@ export async function register(
 			: "pi-synapse";
 
 	pi.on("session_start", async (_event, ctx) => {
-		if (!ctx.hasUI) return;
+		if (!ctx.hasUI) {
+			return;
+		}
 		let ok = await transportHealth();
 		if (!ok) {
 			await runBroker();
@@ -57,7 +59,9 @@ export async function register(
 	});
 
 	pi.on("session_shutdown", async (_event, ctx) => {
-		if (!ctx.hasUI) return;
+		if (!ctx.hasUI) {
+			return;
+		}
 		ctx.ui.setStatus(statusKey, undefined);
 	});
 

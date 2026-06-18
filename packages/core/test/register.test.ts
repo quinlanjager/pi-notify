@@ -131,7 +131,9 @@ test("register: sets status connected/offline on session_start when UI present",
 	const ctx = makeCtx();
 	const onStart = handlers.get("session_start");
 	expect(onStart).toBeTruthy();
-	if (!onStart) throw new Error("missing session_start handler");
+	if (!onStart) {
+		throw new Error("missing session_start handler");
+	}
 
 	await onStart({}, ctx);
 
@@ -152,7 +154,9 @@ test("register: clears status on session_shutdown", async () => {
 	const ctx = makeCtx();
 	const onShutdown = handlers.get("session_shutdown");
 	expect(onShutdown).toBeTruthy();
-	if (!onShutdown) throw new Error("missing session_shutdown handler");
+	if (!onShutdown) {
+		throw new Error("missing session_shutdown handler");
+	}
 
 	await onShutdown({}, ctx);
 
@@ -171,7 +175,9 @@ test("register: does not touch UI when hasUI is false", async () => {
 	const ctx = makeCtx({ hasUI: false });
 	const onStart = handlers.get("session_start");
 	expect(onStart).toBeTruthy();
-	if (!onStart) throw new Error("missing session_start handler");
+	if (!onStart) {
+		throw new Error("missing session_start handler");
+	}
 
 	await onStart({}, ctx);
 
@@ -243,7 +249,9 @@ test("register: synapse:publish command parses topic + payload from args", async
 
 	const cmd = commands.get("synapse:publish");
 	expect(cmd).toBeTruthy();
-	if (!cmd) throw new Error("missing synapse:publish command");
+	if (!cmd) {
+		throw new Error("missing synapse:publish command");
+	}
 
 	const ctx = makeCommandCtx();
 	await cmd.handler("alerts.deploy shipped v2", ctx);
@@ -268,7 +276,9 @@ test("register: synapse:publish command prompts when args are empty", async () =
 	});
 
 	const cmd = commands.get("synapse:publish");
-	if (!cmd) throw new Error("missing synapse:publish command");
+	if (!cmd) {
+		throw new Error("missing synapse:publish command");
+	}
 
 	const ctx = makeCommandCtx(["alerts.test", "hello"]);
 	await cmd.handler("", ctx);
@@ -306,7 +316,9 @@ test("register: synapse_publish tool registered + publishes when tools opt-in", 
 
 	const tool = tools.get("synapse_publish");
 	expect(tool).toBeTruthy();
-	if (!tool) throw new Error("missing synapse_publish tool");
+	if (!tool) {
+		throw new Error("missing synapse_publish tool");
+	}
 
 	const res = await tool.execute(
 		"call-1",
@@ -336,7 +348,9 @@ test("register: synapse_publish tool reports publish failure", async () => {
 	});
 
 	const tool = tools.get("synapse_publish");
-	if (!tool) throw new Error("missing synapse_publish tool");
+	if (!tool) {
+		throw new Error("missing synapse_publish tool");
+	}
 
 	const res = await tool.execute(
 		"call-1",

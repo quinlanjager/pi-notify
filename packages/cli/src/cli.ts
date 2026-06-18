@@ -15,10 +15,15 @@ import type { BusEndpoints } from "@pi-synapse/core";
  */
 function endpoints(): Partial<BusEndpoints> {
 	const out: Partial<BusEndpoints> = {};
-	if (process.env.PI_SYNAPSE_XSUB) out.xsub = process.env.PI_SYNAPSE_XSUB;
-	if (process.env.PI_SYNAPSE_XPUB) out.xpub = process.env.PI_SYNAPSE_XPUB;
-	if (process.env.PI_SYNAPSE_CONTROL)
+	if (process.env.PI_SYNAPSE_XSUB) {
+		out.xsub = process.env.PI_SYNAPSE_XSUB;
+	}
+	if (process.env.PI_SYNAPSE_XPUB) {
+		out.xpub = process.env.PI_SYNAPSE_XPUB;
+	}
+	if (process.env.PI_SYNAPSE_CONTROL) {
 		out.control = process.env.PI_SYNAPSE_CONTROL;
+	}
 	return out;
 }
 
@@ -82,7 +87,9 @@ async function cmdSubscribe(prefix: string) {
 function parseMeta(
 	raw: string | string[] | undefined,
 ): Record<string, string> | undefined {
-	if (!raw) return undefined;
+	if (!raw) {
+		return undefined;
+	}
 	const entries = (Array.isArray(raw) ? raw : [raw]).map((kv) => {
 		const colon = kv.indexOf(":");
 		if (colon === -1) {

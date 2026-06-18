@@ -25,7 +25,9 @@ export type EnvelopeSource = {
 
 export function normalizeTopic(input: string): string | undefined {
 	const topic = input.trim();
-	if (!topic) return undefined;
+	if (!topic) {
+		return undefined;
+	}
 	return topic;
 }
 

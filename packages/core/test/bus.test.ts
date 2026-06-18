@@ -20,7 +20,9 @@ beforeAll(async () => {
 	teardown = await runBroker({ endpoints });
 
 	const up = await health({ endpoints, timeoutMs: 2000 });
-	if (!up) throw new Error("Broker did not start in time");
+	if (!up) {
+		throw new Error("Broker did not start in time");
+	}
 }, 5000);
 
 afterAll(() => {
