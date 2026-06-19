@@ -110,6 +110,30 @@ export async function register(
 		},
 	});
 
+	pi.registerCommand("synapse:run-broker", {
+		description: "Starts the synapse broker owned by this session.",
+		handler: async (args, ctx) => {
+			let ok = await transportHealth();
+			let alreadyStarted = true;
+
+			try {
+				if (!ok) {
+					alreadyStarted = false;
+					await runBroker();
+				}
+				ok = await transportHealth();
+
+				if (ok && alreadyStarted) {
+					ctx.ui.notify(`Broker already running`, "info");
+				} else if (ok) {
+					ctx.ui.notify(`Broker started`, "info");
+				}
+			} catch (error) {
+				ctx.ui.notify(`Broker failed to start`, "error");
+			}
+		},
+	});
+
 	if (opts.tools) {
 		const PublishParams = Type.Object({
 			topic: Type.String({
